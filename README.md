@@ -10,7 +10,79 @@
 
 [![Join the chat at https://gitter.im/lynndylanhurley/devise_token_auth](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lynndylanhurley/devise_token_auth?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-This gem provides the following features:
+This Fork is to do the following:
+  * Now You can use the same controller methods for mobile or angularJS alongside the regular devise gem and method current user will be the same if authunticated by session or token
+  * You have to change the value of config.enable_standard_devise_support = true
+  * You have to use different routes for users controller for token as the following
+
+#### config/routes.rb
+~~~ruby
+namespace :api do
+namespace :v1 do
+mount_devise_token_auth_for 'User', at: 'auth'
+end
+end
+
+devise_for :users
+~~~
+
+* Now you will be able to authenticate via Sessions or Tokens :)
+
+* for ng-token-auth library you will have to change the following
+
+    ~~~javascript
+    // The Below is only example but the point is don't use the api namespace routes in the apiUrl
+    $authProvider.configure({
+    //apiUrl:                'http://localhost:3333/api/v1', this won't work
+    apiUrl:                  'http://localhost:3333',
+    tokenValidationPath:     '/api/v1/auth/validate_token',
+    signOutUrl:              '/api/v1/auth/sign_out',
+    emailRegistrationPath:   '/api/v1/auth',
+    accountUpdatePath:       '/api/v1/auth',
+    accountDeletePath:       '/api/v1/auth',
+    confirmationSuccessUrl:  window.location.href,
+    passwordResetPath:       '/api/v1/auth/password',
+    passwordUpdatePath:      '/api/v1/auth/password',
+    passwordResetSuccessUrl: window.location.href,
+    emailSignInPath:         '/api/v1/auth/sign_in',
+    storage:                 'localStorage',
+    forceValidateToken:      false,
+    validateOnPageLoad:      true,
+    createPopup: function(url) {
+    return window.open(url, '_blank', 'closebuttoncaption=Cancel');
+    },
+    parseExpiry: function(headers) {
+    // convert from UTC ruby (seconds) to UTC js (milliseconds)
+    return (parseInt(headers['expiry']) * 1000) || null;
+    },
+    handleLoginResponse: function(response) {
+    debugger
+    return response.data;
+    },
+    handleAccountUpdateResponse: function(response) {
+    return response.data;
+    },
+    handleTokenValidationResponse: function(response) {
+    return response.data;
+    }
+    });
+    ~~~
+
+* now you have to use these rack-cors gem with following settings
+
+#### config/application.rb
+    ~~~ruby
+    config.middleware.insert_before 0, 'Rack::Cors' do
+      allow do
+        origins '*'
+        resource '*', headers: :any, methods: [:get, :post, :options, :delete], expose: ['access-token', 'expiry', 'token-type', 'uid', 'client']
+      end
+    end
+    ~~~
+
+### Here is the end of the specified fork updates now use the below as usual
+
+    This gem provides the following features:
 
 * Seamless integration with:
   * [ng-token-auth](https://github.com/lynndylanhurley/ng-token-auth) for [AngularJS](https://github.com/angular/angular.js)
@@ -121,18 +193,18 @@ The following events will take place when using the install generator:
 
 * A migration file will be created in the `db/migrate` directory. Inspect the migrations file, add additional columns if necessary, and then run the migration:
 
-  ~~~bash
-  rake db:migrate
-  ~~~
+    ~~~bash
+    rake db:migrate
+    ~~~
 
-You may also need to configure the following items:
+    You may also need to configure the following items:
 
 * **OmniAuth providers** when using 3rd party oauth2 authentication. [Read more](#omniauth-authentication).
 * **Cross Origin Request Settings** when using cross-domain clients. [Read more](#cors).
 * **Email** when using email registration. [Read more](#email-authentication).
 * **Multiple model support** may require additional steps. [Read more](#using-multiple-models).
 
-[Jump here](#configuration-cont) for more configuration information.
+    [Jump here](#configuration-cont) for more configuration information.
 
 # Usage TL;DR
 
@@ -178,14 +250,14 @@ Additionally, you can configure other aspects of devise by manually creating the
 
 ~~~ruby
 Devise.setup do |config|
-  # The e-mail address that mail will appear to be sent from
-  # If absent, mail is sent from "please-change-me-at-config-initializers-devise@example.com"
-  config.mailer_sender = "support@myapp.com"
+# The e-mail address that mail will appear to be sent from
+# If absent, mail is sent from "please-change-me-at-config-initializers-devise@example.com"
+config.mailer_sender = "support@myapp.com"
 
-  # If using rails-api, you may want to tell devise to not use ActionDispatch::Flash
-  # middleware b/c rails-api does not include it.
-  # See: http://stackoverflow.com/q/19600905/806956
-  config.navigational_formats = [:json]
+# If using rails-api, you may want to tell devise to not use ActionDispatch::Flash
+# middleware b/c rails-api does not include it.
+# See: http://stackoverflow.com/q/19600905/806956
+config.navigational_formats = [:json]
 end
 ~~~
 
@@ -214,9 +286,9 @@ These settings must be obtained from the providers themselves.
 ~~~ruby
 # config/initializers/omniauth.rb
 Rails.application.config.middleware.use OmniAuth::Builder do
-  provider :github,        ENV['GITHUB_KEY'],   ENV['GITHUB_SECRET'],   scope: 'email,profile'
-  provider :facebook,      ENV['FACEBOOK_KEY'], ENV['FACEBOOK_SECRET']
-  provider :google_oauth2, ENV['GOOGLE_KEY'],   ENV['GOOGLE_SECRET']
+provider :github,        ENV['GITHUB_KEY'],   ENV['GITHUB_SECRET'],   scope: 'email,profile'
+provider :facebook,      ENV['FACEBOOK_KEY'], ENV['FACEBOOK_SECRET']
+provider :google_oauth2, ENV['GOOGLE_KEY'],   ENV['GOOGLE_SECRET']
 end
 ~~~
 
@@ -245,24 +317,24 @@ The client configuration for github should look like this:
 **Angular.js setting for authenticating using github**:
 ~~~javascript
 angular.module('myApp', ['ng-token-auth'])
-  .config(function($authProvider) {
-    $authProvider.configure({
-      apiUrl: 'http://api.example.com'
-      authProviderPaths: {
-        github: '/auth/github' // <-- note that this is different than what was set with github
-      }
-    });
-  });
+.config(function($authProvider) {
+$authProvider.configure({
+apiUrl: 'http://api.example.com'
+authProviderPaths: {
+github: '/auth/github' // <-- note that this is different than what was set with github
+}
+});
+});
 ~~~
 
 **jToker settings for github should look like this:
 
 ~~~javascript
 $.auth.configure({
-  apiUrl: 'http://api.example.com',
-  authProviderPaths: {
-    github: '/auth/github' // <-- note that this is different than what was set with github
-  }
+apiUrl: 'http://api.example.com',
+authProviderPaths: {
+github: '/auth/github' // <-- note that this is different than what was set with github
+}
 });
 ~~~
 
@@ -291,9 +363,9 @@ I recommend using [mailcatcher](http://mailcatcher.me/) for development.
 ~~~ruby
 # config/environments/development.rb
 Rails.application.configure do
-  config.action_mailer.default_url_options = { :host => 'your-dev-host.dev' }
-  config.action_mailer.delivery_method = :smtp
-  config.action_mailer.smtp_settings = { :address => 'your-dev-host.dev', :port => 1025 }
+config.action_mailer.default_url_options = { :host => 'your-dev-host.dev' }
+config.action_mailer.delivery_method = :smtp
+config.action_mailer.smtp_settings = { :address => 'your-dev-host.dev', :port => 1025 }
 end
 ~~~
 
@@ -304,12 +376,12 @@ Devise Token Auth ships with intelligent default wording for everything you need
 
 ~~~yaml
 en:
-  devise:
-    mailer:
-      confirmation_instructions:
-        subject: "Please confirm your e-mail address"
-      reset_password_instructions:
-        subject: "Reset password request"
+devise:
+mailer:
+confirmation_instructions:
+subject: "Please confirm your e-mail address"
+reset_password_instructions:
+subject: "Reset password request"
 ~~~
 
 ## CORS
@@ -325,17 +397,17 @@ gem 'rack-cors', :require => 'rack/cors'
 
 # config/application.rb
 module YourApp
-  class Application < Rails::Application
-    config.middleware.use Rack::Cors do
-      allow do
-        origins '*'
-        resource '*',
-          :headers => :any,
-          :expose  => ['access-token', 'expiry', 'token-type', 'uid', 'client'],
-          :methods => [:get, :post, :options, :delete, :put]
-      end
-    end
-  end
+class Application < Rails::Application
+config.middleware.use Rack::Cors do
+allow do
+origins '*'
+resource '*',
+:headers => :any,
+:expose  => ['access-token', 'expiry', 'token-type', 'uid', 'client'],
+:methods => [:get, :post, :options, :delete, :put]
+end
+end
+end
 end
 ~~~
 
@@ -382,7 +454,7 @@ It is recommended to include the concern in your base `ApplicationController` so
 ~~~ruby
 # app/controllers/application_controller.rb
 class ApplicationController < ActionController::Base
-  include DeviseTokenAuth::Concerns::SetUserByToken
+include DeviseTokenAuth::Concerns::SetUserByToken
 end
 ~~~
 
@@ -408,16 +480,16 @@ Note that if the model that you're trying to access isn't called `User`, the hel
 ~~~ruby
 # app/controllers/test_controller.rb
 class TestController < ApplicationController
-  before_action :authenticate_user!
+before_action :authenticate_user!
 
-  def members_only
-    render json: {
-      data: {
-        message: "Welcome #{current_user.name}",
-        user: current_user
-      }
-    }, status: 200
-  end
+def members_only
+render json: {
+data: {
+message: "Welcome #{current_user.name}",
+user: current_user
+}
+}, status: 200
+end
 end
 ~~~
 
@@ -455,49 +527,49 @@ Models that include the `DeviseTokenAuth::Concerns::User` concern will have acce
 
 * **`valid_token?`**: check if an authentication token is valid. Accepts a `token` and `client` as arguments. Returns a boolean.
 
-  **Example**:
-  ~~~ruby
-  # extract token + client_id from auth header
-  client_id = request.headers['client']
-  token = request.headers['access-token']
+    **Example**:
+    ~~~ruby
+    # extract token + client_id from auth header
+    client_id = request.headers['client']
+    token = request.headers['access-token']
 
-  @resource.valid_token?(token, client_id)
-  ~~~
+    @resource.valid_token?(token, client_id)
+    ~~~
 
 * **`create_new_auth_token`**: creates a new auth token with all of the necessary metadata. Accepts `client` as an optional argument. Will generate a new `client` if none is provided. Returns the authentication headers that should be sent by the client as an object.
 
-  **Example**:
-  ~~~ruby
-  # extract client_id from auth header
-  client_id = request.headers['client']
+    **Example**:
+    ~~~ruby
+    # extract client_id from auth header
+    client_id = request.headers['client']
 
-  # update token, generate updated auth headers for response
-  new_auth_header = @resource.create_new_auth_token(client_id)
+    # update token, generate updated auth headers for response
+    new_auth_header = @resource.create_new_auth_token(client_id)
 
-  # update response with the header that will be required by the next request
-  response.headers.merge!(new_auth_header)
-  ~~~
+    # update response with the header that will be required by the next request
+    response.headers.merge!(new_auth_header)
+    ~~~
 
 * **`build_auth_header`**: generates the auth header that should be sent to the client with the next request. Accepts `token` and `client` as arguments. Returns a string.
 
-  **Example**:
-  ~~~ruby
-  # create client id and token
-  client_id = SecureRandom.urlsafe_base64(nil, false)
-  token     = SecureRandom.urlsafe_base64(nil, false)
+    **Example**:
+    ~~~ruby
+    # create client id and token
+    client_id = SecureRandom.urlsafe_base64(nil, false)
+    token     = SecureRandom.urlsafe_base64(nil, false)
 
-  # store client + token in user's token hash
-  @resource.tokens[client_id] = {
+    # store client + token in user's token hash
+    @resource.tokens[client_id] = {
     token: BCrypt::Password.create(token),
     expiry: (Time.now + DeviseTokenAuth.token_lifespan).to_i
-  }
+    }
 
-  # generate auth headers for response
-  new_auth_header = @resource.build_auth_header(token, client_id)
+    # generate auth headers for response
+    new_auth_header = @resource.build_auth_header(token, client_id)
 
-  # update response with the header that will be required by the next request
-  response.headers.merge!(new_auth_header)
-  ~~~
+    # update response with the header that will be required by the next request
+    response.headers.merge!(new_auth_header)
+    ~~~
 
 ## Using multiple models
 
@@ -507,21 +579,21 @@ Models that include the `DeviseTokenAuth::Concerns::User` concern will have acce
 * [Angular2](https://angular2-token.herokuapp.com)
 * [React + jToker](http://j-toker-demo.herokuapp.com/#/alt-user)
 
-This gem supports the use of multiple user models. One possible use case is to authenticate visitors using a model called `User`, and to authenticate administrators with a model called `Admin`. Take the following steps to add another authentication model to your app:
+    This gem supports the use of multiple user models. One possible use case is to authenticate visitors using a model called `User`, and to authenticate administrators with a model called `Admin`. Take the following steps to add another authentication model to your app:
 
-1. Run the install generator for the new model.
-  ~~~
-  rails g devise_token_auth:install Admin admin_auth
-  ~~~
+    1. Run the install generator for the new model.
+    ~~~
+    rails g devise_token_auth:install Admin admin_auth
+    ~~~
 
-  This will create the `Admin` model and define the model's authentication routes with the base path `/admin_auth`.
+    This will create the `Admin` model and define the model's authentication routes with the base path `/admin_auth`.
 
-1. Define the routes to be used by the `Admin` user within a [`devise_scope`](https://github.com/plataformatec/devise#configuring-routes).
+    1. Define the routes to be used by the `Admin` user within a [`devise_scope`](https://github.com/plataformatec/devise#configuring-routes).
 
-  **Example**:
+    **Example**:
 
-  ~~~ruby
-  Rails.application.routes.draw do
+    ~~~ruby
+    Rails.application.routes.draw do
     # when using multiple models, controllers will default to the first available
     # devise mapping. routes for subsequent devise mappings will need to defined
     # within a `devise_scope` block
@@ -538,12 +610,12 @@ This gem supports the use of multiple user models. One possible use case is to a
 
     # routes within this block will authorize requests using the Admin class
     devise_scope :admin do
-      get 'demo/admins_only', to: 'demo#admins_only'
+    get 'demo/admins_only', to: 'demo#admins_only'
     end
-  end
-  ~~~
+    end
+    ~~~
 
-1. Configure any `Admin` restricted controllers. Controllers will now have access to the methods [described here](#methods):
+    1. Configure any `Admin` restricted controllers. Controllers will now have access to the methods [described here](#methods):
   * `before_action :authenticate_admin!`
   * `current_admin`
   * `admin_signed_in?`
@@ -557,17 +629,17 @@ It is also possible to control access to multiple user types at the same time us
 
 ~~~ruby
 class DemoGroupController < ApplicationController
-  devise_token_auth_group :member, contains: [:user, :admin]
-  before_action :authenticate_member!
+devise_token_auth_group :member, contains: [:user, :admin]
+before_action :authenticate_member!
 
-  def members_only
-    render json: {
-      data: {
-        message: "Welcome #{current_member.name}",
-        user: current_member
-      }
-    }, status: 200
-  end
+def members_only
+render json: {
+data: {
+message: "Welcome #{current_member.name}",
+user: current_member
+}
+}, status: 200
+end
 end
 ~~~
 
@@ -588,9 +660,9 @@ By default, almost all of the Devise modules are included:
 * [`confirmable`](https://github.com/plataformatec/devise/blob/master/lib/devise/models/confirmable.rb)
 * [`omniauthable`](https://github.com/plataformatec/devise/blob/master/lib/devise/models/omniauthable.rb)
 
-You may not want all of these features enabled in your app. That's OK! You can mix and match to suit your own unique style.
+    You may not want all of these features enabled in your app. That's OK! You can mix and match to suit your own unique style.
 
-The following example shows how to disable email confirmation.
+    The following example shows how to disable email confirmation.
 
 ##### Example: disable email confirmation
 
@@ -600,14 +672,14 @@ Just list the devise modules that you want to include **before** including the `
 # app/models/user.rb
 class User < ActiveRecord::Base
 
-  # notice this comes BEFORE the include statement below
-  # also notice that :confirmable is not included in this block
-  devise :database_authenticatable, :recoverable,
-         :trackable, :validatable, :registerable,
-         :omniauthable
+# notice this comes BEFORE the include statement below
+# also notice that :confirmable is not included in this block
+devise :database_authenticatable, :recoverable,
+:trackable, :validatable, :registerable,
+:omniauthable
 
-  # note that this include statement comes AFTER the devise block above
-  include DeviseTokenAuth::Concerns::User
+# note that this include statement comes AFTER the devise block above
+include DeviseTokenAuth::Concerns::User
 end
 ~~~
 
@@ -621,12 +693,12 @@ First instruct the model not to include the `omniauthable` module.
 # app/models/user.rb
 class User < ActiveRecord::Base
 
-  # notice that :omniauthable is not included in this block
-  devise :database_authenticatable, :confirmable,
-         :recoverable, :trackable, :validatable,
-         :registerable
+# notice that :omniauthable is not included in this block
+devise :database_authenticatable, :confirmable,
+:recoverable, :trackable, :validatable,
+:registerable
 
-  include DeviseTokenAuth::Concerns::User
+include DeviseTokenAuth::Concerns::User
 end
 ~~~
 
@@ -634,8 +706,8 @@ Now tell the route helper to `skip` mounting the `omniauth_callbacks` controller
 
 ~~~ruby
 Rails.application.routes.draw do
-  # config/routes.rb
-  mount_devise_token_auth_for 'User', at: 'auth', skip: [:omniauth_callbacks]
+# config/routes.rb
+mount_devise_token_auth_for 'User', at: 'auth', skip: [:omniauth_callbacks]
 end
 ~~~
 
@@ -650,30 +722,30 @@ For example, the default behavior of the [`validate_token`](https://github.com/l
 ~~~ruby
 # config/routes.rb
 Rails.application.routes.draw do
-  ...
-  mount_devise_token_auth_for 'User', at: 'auth', controllers: {
-    token_validations:  'overrides/token_validations'
-  }
+...
+mount_devise_token_auth_for 'User', at: 'auth', controllers: {
+token_validations:  'overrides/token_validations'
+}
 end
 
 # app/controllers/overrides/token_validations_controller.rb
 module Overrides
-  class TokenValidationsController < DeviseTokenAuth::TokenValidationsController
+class TokenValidationsController < DeviseTokenAuth::TokenValidationsController
 
-    def validate_token
-      # @resource will have been set by set_user_by_token concern
-      if @resource
-        render json: {
-          data: @resource.as_json(methods: :calculate_operating_thetan)
-        }
-      else
-        render json: {
-          success: false,
-          errors: ["Invalid login credentials"]
-        }, status: 401
-      end
-    end
-  end
+def validate_token
+# @resource will have been set by set_user_by_token concern
+if @resource
+render json: {
+data: @resource.as_json(methods: :calculate_operating_thetan)
+}
+else
+render json: {
+success: false,
+errors: ["Invalid login credentials"]
+}, status: 401
+end
+end
+end
 end
 ~~~
 
@@ -720,12 +792,12 @@ To customize json rendering, implement the following protected controller method
 
 ~~~ruby
 mount_devise_token_auth_for 'User', at: 'auth', controllers: {
-  confirmations:      'devise_token_auth/confirmations',
-  passwords:          'devise_token_auth/passwords',
-  omniauth_callbacks: 'devise_token_auth/omniauth_callbacks',
-  registrations:      'devise_token_auth/registrations',
-  sessions:           'devise_token_auth/sessions',
-  token_validations:  'devise_token_auth/token_validations'
+confirmations:      'devise_token_auth/confirmations',
+passwords:          'devise_token_auth/passwords',
+omniauth_callbacks: 'devise_token_auth/omniauth_callbacks',
+registrations:      'devise_token_auth/registrations',
+sessions:           'devise_token_auth/sessions',
+token_validations:  'devise_token_auth/token_validations'
 }
 ~~~
 
@@ -738,11 +810,11 @@ It may be that you simply want to _add_ behavior to existing controllers without
 ```ruby
 class Custom::RegistrationsController < DeviseTokenAuth::RegistrationsController
 
-  def create
-    super do |resource|
-      resource.do_something(extra)
-    end
-  end
+def create
+super do |resource|
+resource.do_something(extra)
+end
+end
 
 end
 ```
@@ -762,9 +834,9 @@ This will create two new files:
 * `app/views/devise/mailer/reset_password_instructions.html.erb`
 * `app/views/devise/mailer/confirmation_instructions.html.erb`
 
-These files may be edited to suit your taste. You can customize the e-mail subjects like [this](#customizing-devise-verbiage).
+    These files may be edited to suit your taste. You can customize the e-mail subjects like [this](#customizing-devise-verbiage).
 
-**Note:** if you choose to modify these templates, do not modify the `link_to` blocks unless you absolutely know what you are doing.
+    **Note:** if you choose to modify these templates, do not modify the `link_to` blocks unless you absolutely know what you are doing.
 
 # Issue Reporting
 
@@ -788,7 +860,7 @@ Yes! But you will need to enable the support of separate routes for standard Dev
 #### config/initializers/devise_token_auth.rb
 ~~~ruby
 DeviseTokenAuth.setup do |config|
-  # config.enable_standard_devise_support = false
+# config.enable_standard_devise_support = false
 end
 ~~~
 
@@ -796,16 +868,16 @@ end
 ~~~ruby
 Rails.application.routes.draw do
 
-  # standard devise routes available at /users
-  # NOTE: make sure this comes first!!!
-  devise_for :users
+# standard devise routes available at /users
+# NOTE: make sure this comes first!!!
+devise_for :users
 
-  # token auth routes available at /api/v1/auth
-  namespace :api do
-    scope :v1 do
-      mount_devise_token_auth_for 'User', at: 'auth'
-    end
-  end
+# token auth routes available at /api/v1/auth
+namespace :api do
+scope :v1 do
+mount_devise_token_auth_for 'User', at: 'auth'
+end
+end
 
 end
 ~~~
@@ -824,7 +896,7 @@ The solution is to use two separate `ApplicationController` classes - one for yo
 # app/controllers/api_controller.rb
 # API routes extend from this controller
 class ApiController < ActionController::Base
-  include DeviseTokenAuth::Concerns::SetUserByToken
+include DeviseTokenAuth::Concerns::SetUserByToken
 end
 
 # app/controllers/application_controller.rb
@@ -857,15 +929,15 @@ By default, the API should update the auth token for each request ([read more](#
 ~~~javascript
 $scope.getResourceData = function() {
 
-  $http.get('/api/restricted_resource_1').success(function(resp) {
-    // handle response
-    $scope.resource1 = resp.data;
-  });
+$http.get('/api/restricted_resource_1').success(function(resp) {
+// handle response
+$scope.resource1 = resp.data;
+});
 
-  $http.get('/api/restricted_resource_2').success(function(resp) {
-    // handle response
-    $scope.resource2 = resp.data;
-  });
+$http.get('/api/restricted_resource_2').success(function(resp) {
+// handle response
+$scope.resource2 = resp.data;
+});
 };
 ~~~
 
@@ -895,11 +967,11 @@ This gem uses auth tokens that are:
 * securely compared (to protect against timing attacks),
 * invalidated after 2 weeks (thus requiring users to login again)
 
-These measures were inspired by [this stackoverflow post](http://stackoverflow.com/questions/18605294/is-devises-token-authenticatable-secure).
+    These measures were inspired by [this stackoverflow post](http://stackoverflow.com/questions/18605294/is-devises-token-authenticatable-secure).
 
-This gem further mitigates timing attacks by using [this technique](https://gist.github.com/josevalim/fb706b1e933ef01e4fb6).
+    This gem further mitigates timing attacks by using [this technique](https://gist.github.com/josevalim/fb706b1e933ef01e4fb6).
 
-But the most important step is to use HTTPS. You are on the hook for that.
+    But the most important step is to use HTTPS. You are on the hook for that.
 
 # Callouts
 
