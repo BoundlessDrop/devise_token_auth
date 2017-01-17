@@ -18,10 +18,26 @@ module DeviseTokenAuth::Concerns::SetUserByToken
   # user auth
   def set_user_by_token(mapping=nil)
     # determine target authentication class
-    rc = resource_class(mapping)
+    if DeviseTokenAuth.enable_standard_devise_support
+      begin
+        rc = resource_class
+      rescue Exception => e
+        rc = resource_class(mapping)
+      end
+      devise_warden_user = warden.user(rc.to_s.underscore.to_sym)
+      if devise_warden_user && devise_warden_user.tokens[@client_id].nil?
+        @used_auth_by_token = false
+        @resource = devise_warden_user
+      end
+    else
+      rc = resource_class(mapping)
+    end
 
     # no default user defined
     return unless rc
+
+    # user has already been found and authenticated
+    return @resource if @resource and @resource.class == rc
 
     #gets the headers names, which was set in the initialize file
     uid_name = DeviseTokenAuth.headers_names[:'uid']
@@ -35,19 +51,6 @@ module DeviseTokenAuth::Concerns::SetUserByToken
 
     # client_id isn't required, set to 'default' if absent
     @client_id ||= 'default'
-
-    # check for an existing user, authenticated via warden/devise, if enabled
-    if DeviseTokenAuth.enable_standard_devise_support
-      devise_warden_user = warden.user(rc.to_s.underscore.to_sym)
-      if devise_warden_user && devise_warden_user.tokens[@client_id].nil?
-        @used_auth_by_token = false
-        @resource = devise_warden_user
-        @resource.create_new_auth_token
-      end
-    end
-
-    # user has already been found and authenticated
-    return @resource if @resource and @resource.class == rc
 
     # ensure we clear the client_id
     if !@token
@@ -75,26 +78,13 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     end
   end
 
-
   def update_auth_header
+    return unless @used_auth_by_token
     # cannot save object if model has invalid params
     return unless @resource and @resource.valid? and @client_id
 
     # Generate new client_id with existing authentication
-    @client_id = nil unless @used_auth_by_token
-
-    if @used_auth_by_token and not DeviseTokenAuth.change_headers_on_each_request
-      # should not append auth header if @resource related token was
-      # cleared by sign out in the meantime
-      return if @resource.reload.tokens[@client_id].nil?
-
-      auth_header = @resource.build_auth_header(@token, @client_id)
-
-      # update the response header
-      response.headers.merge!(auth_header)
-
-    else
-
+    if DeviseTokenAuth.change_headers_on_each_request
       # Lock the user record during any auth_header updates to ensure
       # we don't have write contention from multiple threads
       @resource.with_lock do
@@ -105,7 +95,6 @@ module DeviseTokenAuth::Concerns::SetUserByToken
         # determine batch request status after request processing, in case
         # another processes has updated it during that processing
         @is_batch_request = is_batch_request?(@resource, @client_id)
-
         auth_header = {}
 
         # extend expiration of batch buffer to account for the duration of
@@ -120,11 +109,16 @@ module DeviseTokenAuth::Concerns::SetUserByToken
           # update the response header
           response.headers.merge!(auth_header)
         end
-
       end # end lock
+    else
+      # should not append auth header if @resource related token was
+      # cleared by sign out in the meantime
+      return if @resource.reload.tokens[@client_id].nil?
+      auth_header = @resource.build_auth_header(@token, @client_id)
 
+      # update the response header
+      response.headers.merge!(auth_header)
     end
-
   end
 
   def resource_class(m=nil)
@@ -133,13 +127,10 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     else
       mapping = Devise.mappings[resource_name] || Devise.mappings.values.first
     end
-
     mapping.to
   end
 
-
   private
-
 
   def is_batch_request?(user, client_id)
     not params[:unbatch] and
