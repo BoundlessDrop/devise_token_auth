@@ -11,16 +11,18 @@
 [![Join the chat at https://gitter.im/lynndylanhurley/devise_token_auth](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lynndylanhurley/devise_token_auth?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 This Fork is to do the following:
-  * Now You can use the same controller methods for mobile or angularJS alongside the regular devise gem and method current user will be the same if authunticated by session or token
+  * Now You can use the same controller methods for mobile or angularJS alongside the regular devise gem
+  * method current_user will be the same if authenticated by session or token
   * You have to change the value of config.enable_standard_devise_support = true
   * You have to use different routes for users controller for token as the following
 
 #### config/routes.rb
+
 ~~~ruby
 namespace :api do
-namespace :v1 do
-mount_devise_token_auth_for 'User', at: 'auth'
-end
+  namespace :v1 do
+    mount_devise_token_auth_for 'User', at: 'auth'
+  end
 end
 
 devise_for :users
@@ -30,55 +32,55 @@ devise_for :users
 
 * for ng-token-auth library you will have to change the following
 
-    ~~~javascript
-    // The Below is only example but the point is don't use the api namespace routes in the apiUrl
-    $authProvider.configure({
-    //apiUrl:                'http://localhost:3333/api/v1', this won't work
-    apiUrl:                  'http://localhost:3333',
-    tokenValidationPath:     '/api/v1/auth/validate_token',
-    signOutUrl:              '/api/v1/auth/sign_out',
-    emailRegistrationPath:   '/api/v1/auth',
-    accountUpdatePath:       '/api/v1/auth',
-    accountDeletePath:       '/api/v1/auth',
-    confirmationSuccessUrl:  window.location.href,
-    passwordResetPath:       '/api/v1/auth/password',
-    passwordUpdatePath:      '/api/v1/auth/password',
-    passwordResetSuccessUrl: window.location.href,
-    emailSignInPath:         '/api/v1/auth/sign_in',
-    storage:                 'localStorage',
-    forceValidateToken:      false,
-    validateOnPageLoad:      true,
-    createPopup: function(url) {
+~~~javascript
+// The Below is only example but the point is don't use the api namespace routes in the apiUrl
+$authProvider.configure({
+  //apiUrl:                'http://localhost:3333/api/v1', this won't work
+  apiUrl:                  'http://localhost:3333',
+  tokenValidationPath:     '/api/v1/auth/validate_token',
+  signOutUrl:              '/api/v1/auth/sign_out',
+  emailRegistrationPath:   '/api/v1/auth',
+  accountUpdatePath:       '/api/v1/auth',
+  accountDeletePath:       '/api/v1/auth',
+  confirmationSuccessUrl:  window.location.href,
+  passwordResetPath:       '/api/v1/auth/password',
+  passwordUpdatePath:      '/api/v1/auth/password',
+  passwordResetSuccessUrl: window.location.href,
+  emailSignInPath:         '/api/v1/auth/sign_in',
+  storage:                 'localStorage',
+  forceValidateToken:      false,
+  validateOnPageLoad:      true,
+  createPopup: function(url) {
     return window.open(url, '_blank', 'closebuttoncaption=Cancel');
-    },
-    parseExpiry: function(headers) {
+  },
+  parseExpiry: function(headers) {
     // convert from UTC ruby (seconds) to UTC js (milliseconds)
     return (parseInt(headers['expiry']) * 1000) || null;
-    },
-    handleLoginResponse: function(response) {
-    debugger
+  },
+  handleLoginResponse: function(response) {
     return response.data;
-    },
-    handleAccountUpdateResponse: function(response) {
+  },
+  handleAccountUpdateResponse: function(response) {
     return response.data;
-    },
-    handleTokenValidationResponse: function(response) {
+  },
+  handleTokenValidationResponse: function(response) {
     return response.data;
-    }
-    });
-    ~~~
+  }
+});
+~~~
 
 * now you have to use these rack-cors gem with following settings
 
 #### config/application.rb
-    ~~~ruby
-    config.middleware.insert_before 0, 'Rack::Cors' do
-      allow do
-        origins '*'
-        resource '*', headers: :any, methods: [:get, :post, :options, :delete], expose: ['access-token', 'expiry', 'token-type', 'uid', 'client']
-      end
-    end
-    ~~~
+
+~~~ruby
+config.middleware.insert_before 0, 'Rack::Cors' do
+  allow do
+    origins '*'
+    resource '*', headers: :any, methods: [:get, :post, :options, :delete], expose: ['access-token', 'expiry', 'token-type', 'uid', 'client']
+  end
+end
+~~~
 
 ### Here is the end of the specified fork updates now use the below as usual
 
